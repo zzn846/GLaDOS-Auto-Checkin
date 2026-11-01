@@ -1,0 +1,38 @@
+name: GLaDOS one-time encrypted server migration
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Encrypt existing cookie for the selected server
+        env:
+          COOKIES: ${{ secrets.COOKIES }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$COOKIES"
+          test "${#COOKIES}" -le 446
+          cat > "$RUNNER_TEMP/server-public.pem" <<'PUBLIC_KEY'
+          -----BEGIN PUBLIC KEY-----
+          MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAwX0Ju/RPzWRwvsBHm4O+
+          3voZSDOg8j9G1aoDW4e2XZD+uGt2aJO0lH2jHZiDOjRAhkqRwj7gi9gpAp1pq582
+          2PHkP3up4FhwoR/oY2Oc86R2p7Zl5ofl1H10bZczyDWdxuP5VFBJyB+lTlG0oykE
+          fIOP0GJMm7Hv0FSlpmpulBbaJuvScKmfq1xDYEQbXEz3fPDgAXR+W7/7ceYOfpWj
+          XyyT/KCMKg2Swg10DWV9YkKBFUl4msZg29iRqjNAi/FiuyfZWQC+ZYua8jJqNoHV
+          eAKdXxJZFwtaLiUdEgRMT7uPaPFm6UbS44bfS5P8SHvIb/z+/7WhnOGg+gNifbau
+          3+8auv4/gruC/8sYEZH+9MUARKlAYmhTnCz5BK4uCiS161ASc6AQpsHVvgaFm9Ic
+          stJlg4yaNxsXs7lIhbngDiJMdXeHRJ+fZPuc5pnJ5op4xeO5gcP832QXsoYTCao0
+          XcZR2ds6/hatIDuzkH3ndzqQlH2JElXdeusdW4f84BMw4E25WF/5zl571qN6LpDj
+          D4aQKe+V5xfXPYVNRXxaI4ggA1kh63oFd15cJkR/Cgk2BaQwyhuaehhOLVpirmSR
+          O6tvaH8cYr23sfuytMX0tTqFfBvICqJgqdh5nTDgUNKPqEAFv7682ZUr3TeCoZdS
+          9hew0auwUCVC78AFDvT7AQsCAwEAAQ==
+          -----END PUBLIC KEY-----
+          PUBLIC_KEY
+          encrypted=$(printf '%s' "$COOKIES" | openssl pkeyutl -encrypt -pubin -inkey "$RUNNER_TEMP/server-public.pem" -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 | base64 -w0)
+          printf 'GLADOS_MIGRATION_CIPHERTEXT=%s\n' "$encrypted"
